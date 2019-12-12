@@ -62,7 +62,8 @@ DEFAULT_XAPIAN_FLAGS = (
     xapian.QueryParser.FLAG_BOOLEAN |
     xapian.QueryParser.FLAG_LOVEHATE |
     xapian.QueryParser.FLAG_WILDCARD |
-    xapian.QueryParser.FLAG_PURE_NOT
+    xapian.QueryParser.FLAG_PURE_NOT |
+    xapian.QueryParser.FLAG_PARTIAL
 )
 
 # Mapping from `HAYSTACK_DEFAULT_OPERATOR` to Xapian operators
@@ -204,7 +205,8 @@ class XapianSearchBackend(BaseSearchBackend):
             except DirectoryExistsException:
                 pass
 
-        self.flags = connection_options.get('FLAGS', DEFAULT_XAPIAN_FLAGS)
+        # self.flags = connection_options.get('FLAGS', DEFAULT_XAPIAN_FLAGS)
+        self.flags = DEFAULT_XAPIAN_FLAGS
         self.language = getattr(settings, 'HAYSTACK_XAPIAN_LANGUAGE', 'english')
 
         stemming_strategy_string = getattr(settings, 'HAYSTACK_XAPIAN_STEMMING_STRATEGY', 'STEM_SOME')
@@ -308,6 +310,7 @@ class XapianSearchBackend(BaseSearchBackend):
                 """
                 term_generator.set_termpos(termpos)
 
+                #print("第二個", termpos, text, weight, prefix)
                 start_term = '%s^' % prefix
                 end_term = '%s$' % prefix
                 # add begin
@@ -469,6 +472,7 @@ class XapianSearchBackend(BaseSearchBackend):
                         # from here on the term is a string;
                         # we now decide how it is indexed
 
+                        #print("第一個", field['type'], termpos, prefix, term, weight)
                         if field['type'] == 'text':
                             # text is indexed with positional information
                             termpos = add_text(termpos, prefix, term, weight)
@@ -571,7 +575,10 @@ class XapianSearchBackend(BaseSearchBackend):
         if field_names:
             for field_name in field_names:
                 try:
-                    self.column[field_name]
+                    if isinstance(field_names, dict):
+                        self.column[field_name]
+                    else:
+                        self.column[field_name[0]]
                 except KeyError:
                     raise InvalidIndexError('Trying to use non indexed field "%s"' % field_name)
 
@@ -641,9 +648,11 @@ class XapianSearchBackend(BaseSearchBackend):
             spelling_suggestion = ''
 
         if narrow_queries is not None:
+            # 'price_exact:(60..99999999)'
+            originQuery = query
             query = xapian.Query(
                 xapian.Query.OP_AND, query, xapian.Query(
-                    xapian.Query.OP_AND, [self.parse_query(narrow_query) for narrow_query in narrow_queries]
+                    xapian.Query.OP_AND, [self.parse_query(narrow_query.replace("(", '').replace(")", '')) for narrow_query in narrow_queries]
                 )
             )
 
@@ -705,10 +714,13 @@ class XapianSearchBackend(BaseSearchBackend):
 
         if date_facets:
             facets_dict['dates'] = self._do_date_facets(results, date_facets)
-
+        
         if query_facets:
-            facets_dict['queries'] = self._do_query_facets(results, query_facets)
-
+            if narrow_queries:
+                facets_dict['queries'] = self._do_query_facets(results, query_facets, query=originQuery)
+            else:
+                facets_dict['queries'] = self._do_query_facets(results, query_facets, query=query)
+           
         return {
             'results': results,
             'hits': self._get_hit_count(database, enquire),
@@ -802,7 +814,7 @@ class XapianSearchBackend(BaseSearchBackend):
             results.append(
                 result_class(app_label, model_name, pk, match.percent, **model_data)
             )
-
+        
         return {
             'results': results,
             'hits': self._get_hit_count(database, enquire),
@@ -1100,7 +1112,7 @@ class XapianSearchBackend(BaseSearchBackend):
 
         return facet_dict
 
-    def _do_query_facets(self, results, query_facets):
+    def _do_query_facets(self, results, query_facets, query=None):
         """
         Private method that facets a document by query
 
@@ -1116,9 +1128,22 @@ class XapianSearchBackend(BaseSearchBackend):
         eg. {'name': ('a*', 5)}
         """
         facet_dict = {}
-        for field, query in list(dict(query_facets).items()):
-            facet_dict[field] = (query, self.search(self.parse_query(query))['hits'])
-
+        
+        for fq in query_facets:
+            field, queryStr = fq[0], fq[1]
+            q = "%s:%s" % (field, queryStr)
+            if not field in facet_dict:
+                facet_dict[field] = {}
+                
+            if query:
+                queryObj = xapian.Query(
+                    xapian.Query.OP_AND, query, self.parse_query(q)
+                )
+            else:
+                queryObj = self.parse_query(q)
+                
+            facet_dict[field][q] = self.search(queryObj)['hits']
+        
         return facet_dict
 
     @staticmethod
@@ -1610,7 +1635,7 @@ def _term_to_xapian_value(term, field_type):
     elif field_type == 'integer':
         value = INTEGER_FORMAT % term
     elif field_type == 'float':
-        value = xapian.sortable_serialise(term)
+        value = xapian.sortable_serialise(float(term))
     elif field_type == 'date' or field_type == 'datetime':
         if field_type == 'date':
             # http://stackoverflow.com/a/1937636/931303 and comments
