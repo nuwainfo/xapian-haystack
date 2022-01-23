@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import datetime
 import pickle
 import os
@@ -7,10 +5,8 @@ import re
 import shutil
 import sys
 
-from django.utils import six
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
-from django.utils.encoding import force_text
 
 from haystack import connections
 from haystack.backends import BaseEngine, BaseSearchBackend, BaseSearchQuery, SearchNode, log_query
@@ -29,18 +25,6 @@ except ImportError:
     raise MissingDependency("The 'xapian' backend requires the installation of 'Xapian'. "
                             "Please refer to the documentation.")
 
-if sys.version_info[0] == 2:
-    DirectoryExistsException = OSError
-elif sys.version_info[0] == 3:
-    DirectoryExistsException = FileExistsError
-
-
-class NotSupportedError(Exception):
-    """
-    When the installed version of Xapian doesn't support something and we have
-    the old implementation.
-    """
-    pass
 
 # this maps the different reserved fields to prefixes used to
 # create the database:
@@ -191,7 +175,7 @@ class XapianSearchBackend(BaseSearchBackend):
 
         Also sets the stemming language to be used to `language`.
         """
-        super(XapianSearchBackend, self).__init__(connection_alias, **connection_options)
+        super().__init__(connection_alias, **connection_options)
 
         if not 'PATH' in connection_options:
             raise ImproperlyConfigured("You must specify a 'PATH' in your settings for connection '%s'."
@@ -202,7 +186,7 @@ class XapianSearchBackend(BaseSearchBackend):
         if self.path != MEMORY_DB_NAME:
             try:
                 os.makedirs(self.path)
-            except DirectoryExistsException:
+            except FileExistsError:
                 pass
 
         # self.flags = connection_options.get('FLAGS', DEFAULT_XAPIAN_FLAGS)
@@ -295,11 +279,7 @@ class XapianSearchBackend(BaseSearchBackend):
             term_generator = xapian.TermGenerator()
             term_generator.set_database(database)
             term_generator.set_stemmer(xapian.Stem(self.language))
-            try:
-                term_generator.set_stemming_strategy(self.stemming_strategy)
-            except AttributeError:  
-                # Versions before Xapian 1.2.11 do not support stemming strategies for TermGenerator
-                pass
+            term_generator.set_stemming_strategy(self.stemming_strategy)
             if self.include_spelling is True:
                 term_generator.set_flags(xapian.TermGenerator.FLAG_SPELLING)
 
@@ -357,7 +337,7 @@ class XapianSearchBackend(BaseSearchBackend):
             def _get_ngram_lengths(value):
                 values = value.split()
                 for item in values:
-                    for ngram_length in six.moves.range(NGRAM_MIN_LENGTH, NGRAM_MAX_LENGTH + 1):
+                    for ngram_length in range(NGRAM_MIN_LENGTH, NGRAM_MAX_LENGTH + 1):
                         yield item, ngram_length
 
             for obj in iterable:
@@ -367,8 +347,8 @@ class XapianSearchBackend(BaseSearchBackend):
                 def ngram_terms(value):
                     for item, length in _get_ngram_lengths(value):
                         item_length = len(item)
-                        for start in six.moves.range(0, item_length - length + 1):
-                            for size in six.moves.range(length, length + 1):
+                        for start in range(0, item_length - length + 1):
+                            for size in range(length, length + 1):
                                 end = start + size
                                 if end > item_length:
                                     continue
@@ -665,10 +645,7 @@ class XapianSearchBackend(BaseSearchBackend):
         enquire.set_query(query)
 
         if sort_by:
-            try:
-                _xapian_sort(enquire, sort_by, self.column)
-            except NotSupportedError:
-                _old_xapian_sort(enquire, sort_by, self.column)
+            _xapian_sort(enquire, sort_by, self.column)
 
         results = []
         facets_dict = {
@@ -1269,7 +1246,7 @@ class XapianSearchQuery(BaseSearchQuery):
     ``SearchBackend`` itself.
     """
     def build_params(self, *args, **kwargs):
-        kwargs = super(XapianSearchQuery, self).build_params(*args, **kwargs)
+        kwargs = super().build_params(*args, **kwargs)
 
         if self.end_offset is not None:
             kwargs['end_offset'] = self.end_offset - self.start_offset
@@ -1652,7 +1629,7 @@ def _to_xapian_term(term):
     Converts a Python type to a
     Xapian term that can be indexed.
     """
-    return force_text(term).lower()
+    return str(term).lower()
 
 
 def _from_xapian_value(value, field_type):
@@ -1684,25 +1661,8 @@ def _from_xapian_value(value, field_type):
         return value
 
 
-def _old_xapian_sort(enquire, sort_by, column):
-    sorter = xapian.MultiValueSorter()
-
-    for sort_field in sort_by:
-        if sort_field.startswith('-'):
-            reverse = True
-            sort_field = sort_field[1:]  # Strip the '-'
-        else:
-            reverse = False  # Reverse is inverted in Xapian -- http://trac.xapian.org/ticket/311
-        sorter.add(column[sort_field], reverse)
-
-    enquire.set_sort_by_key_then_relevance(sorter, True)
-
-
 def _xapian_sort(enquire, sort_by, column):
-    try:
-        sorter = xapian.MultiValueKeyMaker()
-    except AttributeError:
-        raise NotSupportedError
+    sorter = xapian.MultiValueKeyMaker()
 
     for sort_field in sort_by:
         if sort_field.startswith('-'):

@@ -1,18 +1,20 @@
 Xapian backend for Django-Haystack
 ==================================
 
-.. _Travis: https://travis-ci.org/notanumber/xapian-haystack
-
-.. image:: https://travis-ci.org/notanumber/xapian-haystack.svg?branch=master
-   :target: https://travis-ci.org/notanumber/xapian-haystack
+.. image:: https://github.com/notanumber/xapian-haystack/actions/workflows/test.yml/badge.svg
+   :target: https://github.com/notanumber/xapian-haystack/actions
+   :alt: GitHub Actions
 .. image:: https://coveralls.io/repos/notanumber/xapian-haystack/badge.svg?branch=master&service=github
    :target: https://coveralls.io/github/notanumber/xapian-haystack?branch=master
+.. image:: https://img.shields.io/pypi/v/xapian-haystack.svg
+   :target: https://pypi.org/project/xapian-haystack/
+   :alt: PyPI version
 
 Xapian-haystack is a backend of `Django-Haystack <http://haystacksearch.org/>`__
-for the `Xapian <http://xapian.org>`__ search engine.
+for the `Xapian <https://xapian.org>`__ search engine.
 Thanks for checking it out.
 
-You can find more information about Xapian `here <http://getting-started-with-xapian.readthedocs.org>`__.
+You can find more information about Xapian `here <https://getting-started-with-xapian.readthedocs.io>`__.
 
 
 Features
@@ -35,17 +37,10 @@ The `endswith` search operation is not supported by Xapian-Haystack.
 Requirements
 ------------
 
-- Python 2.7 or 3+
-- Django 1.8+
-- Django-Haystack 2.5.1
-- Xapian 1.2.19+
-
-In particular, we build-test this backend in `Travis`_ using:
-
-- Python 2.7 and 3.4
-- Django 1.8, 1.9 and 1.10
-- Django-Haystack (master)
-- Xapian 1.2.19 (Python 2 only), 1.3.3 (both), and 1.4.1 (both)
+- Python 3+
+- Django 2.2+
+- Django-Haystack 2.8.0
+- Xapian 1.4+
 
 
 Installation
@@ -57,11 +52,11 @@ First, install Xapian in your machine e.g. with the script provided,
     source <path>/bin/activate
     ./install_xapian.sh <version>
 
-`<version>` must be >=1.3.0 for Python 3 envs. This takes around 10 minutes.
+`<version>` must be >=1.4.0. This takes around 10 minutes.
 
 Finally, install Xapian-Haystack by running::
 
-    pip install git+https://github.com/notanumber/xapian-haystack.git
+    pip install xapian-haystack
 
 
 Configuration
@@ -101,14 +96,14 @@ The backend has the following optional settings:
 Testing
 -------
 
-Xapian-Haystack has a test suite in continuous deployment in `Travis`_. The script
-``.travis.yml`` contains the steps required to run the test suite.
+Xapian-Haystack has a test suite in continuous deployment with GitHub Actions. The file
+``.github/workflows/test.yml`` contains the steps required to run the test suite.
 
 
 Source
 ------
 
-The source code can be found in `github <http://github.com/notanumber/xapian-haystack/>`_.
+The source code can be found in `github <https://github.com/notanumber/xapian-haystack/>`_.
 
 
 Credits
@@ -117,7 +112,7 @@ Credits
 Xapian-Haystack is maintained by `Jorge C. Leitão <http://jorgecarleitao.net>`__;
 `David Sauve <mailto:david.sauve@bag-of-holding.com>`__ was the main contributor of Xapian-Haystack and
 Xapian-Haystack was originally funded by `Trapeze <http://www.trapeze.com>`__.
-`Claudep <http://www.2xlibre.net>`__ is a frequent contributor.
+`Claude Paroz <https://www.2xlibre.net>`__ is a frequent contributor.
 `ANtlord <https://github.com/ANtlord>`__ implemented support for EdgeNgram and Ngram.
 
 
@@ -132,8 +127,8 @@ It may be redistributed under the terms specified in the LICENSE file.
 Questions, Comments, Concerns:
 ------------------------------
 
-Feel free to open an issue `here <http://github.com/notanumber/xapian-haystack/issues>`__
+Feel free to open an issue `here <https://github.com/notanumber/xapian-haystack/issues>`__
 or pull request your work.
 
-You can ask questions on the django-haystack `mailing list <http://groups.google.com/group/django-haystack/>`_:
+You can ask questions on the django-haystack `mailing list <https://groups.google.com/group/django-haystack/>`_:
 or in the irc ``#haystack``.
