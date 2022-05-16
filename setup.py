@@ -7,7 +7,7 @@ def read(fname):
 
 
 setup(
-    name='xapian-haystack-Iuno',
+    name='xapian-haystack',
     version='3.0.1.1',
     description='A Xapian backend for Haystack',
     long_description=read('README.rst'),
